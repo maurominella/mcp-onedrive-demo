@@ -1,0 +1,61 @@
+{
+    "rest-client.environmentVariables": {
+        "dev": {
+            "subscription_id": "*****",
+            "azure_search_endpoint": "https://****.search.windows.net",
+            "azure_management_api_version": "2024-06-01-preview",
+            "aisearch_key": "*****",
+            "storage_account_name": "****",
+            "container_name": "****",
+            "storage_account_key": "***********==",
+            "azure_openai_resourcegroup": "*****",
+            "azure_openai_main_endpoint": "https://*****.openai.azure.com/",
+            "azure_openai_main_servicename": "*****",
+            "azure_openai_main_apikey": "*****",
+            "azure_openai_fallback_endpoint": "https://*****.openai.azure.com/",
+            "azure_openai_fallback_servicename": "*****",
+            "azure_openai_fallback_apikey": "*****",
+            "bearertoken_for_cognitiveservices": "*****",
+            "azure_openai_api_version": "2025-04-28",
+            "azure_openai_api_version_preview": "2025-04-01-preview",
+            "azure_openai_deployment_name": "gpt-4o-for-apim",
+            "apim_service_gatewayurl": "https://*****.azure-api.net",
+            "apim_service_name": "*****",
+            "apim_api_name": "balanced-azure-openai-service-api",
+            "apim_api_version": "2025-06-01",
+            "bearertoken_for_azuremanagement": "*****",
+            "apim_resourcegroup": "*****",
+            "apim_subscription_key_premium": "*****",
+            "apim_subscription_key_standard": "*****",
+            "apim_subscription_key_basic": "*****",
+            "cognitive_service_name": "*****",
+            "cognitive_service_key": "*****",
+            "bearertoken_for_azureml": "*****",
+            "direct_line_secret": "*****"
+        },
+        "staging": {
+            "subscription_id": "",
+            "azure_search_endpoint": "",
+            "aisearch_key": "",
+            "storage_account_name": "",
+            "container_name": "",
+            "storage_account_key": "",
+            "AZURE_OPENAI_ENDPOINT": "****",
+            "AZURE_OPENAI_API_KEY": "****",
+            "cognitive_service_name": "",
+            "cognitive_service_key": ""
+        },
+        "production": {
+            "subscription_id": "",
+            "azure_search_endpoint": "",
+            "aisearch_key": "",
+            "storage_account_name": "",
+            "container_name": "",
+            "storage_account_key": "",
+            "AZURE_OPENAI_ENDPOINT": "****",
+            "AZURE_OPENAI_API_KEY": "****",
+            "cognitive_service_name": "",
+            "cognitive_service_key": ""
+        }
+    }
+}
