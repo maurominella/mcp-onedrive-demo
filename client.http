@@ -1,0 +1,53 @@
+# https://learn.microsoft.com/en-us/azure/ai-services/agents/quickstart?pivots=rest-api
+# az login --use-device-code --tenant <your-tenant-id-or-domain>
+# APP_OBJ_ID=af9624bf-1ab6-41fa-881e-a18f31e4be5c
+# APP_ID_URI=$(az ad app show --id $APP_OBJ_ID --query "identifierUris[0]" -o tsv | tr -d '\r')
+# SCOPE_VALUE=$(az ad app show --id $APP_OBJ_ID --query "api.oauth2PermissionScopes[0].value" -o tsv | tr -d '\r')
+# TOKEN=$(az account get-access-token --scope "${APP_ID_URI}/${SCOPE_VALUE}" --query accessToken -o tsv)
+# echo $TOKEN
+
+
+# Just if pre-authorization is needed, run this:
+# Unique APP_ID for AZURE CLI
+# AZURE_CLI_APP_ID="04b07795-8ddb-461a-bbee-02f9e1bf7b46"
+
+# az rest --method PATCH \
+#   --uri "https://graph.microsoft.com/v1.0/applications/$APP_OBJ_ID" \
+#   --headers "Content-Type=application/json" \
+#   --body "{
+#     \"api\": {
+#       \"preAuthorizedApplications\": [{
+#         \"appId\": \"$AZURE_CLI_APP_ID\",
+#         \"delegatedPermissionIds\": [\"$SCOPE_ID\"]
+#       }]
+#     }
+#   }"
+
+
+@baseUrl = http://localhost:8000
+
+### get the list of tools
+POST {{baseUrl}}/mcp
+Content-Type: application/json
+Accept: application/json, text/event-stream
+Authorization: Bearer {{bearertoken_for_mcp}}
+
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "tools/list",
+  "params": {}
+}
+
+### invoke an MCP tool (e.g. get_onedrive_root_folders)
+POST {{baseUrl}}/mcp
+Content-Type: application/json
+Accept: application/json, text/event-stream
+Authorization: Bearer {{bearertoken_for_mcp}}
+
+{
+  "jsonrpc": "2.0",
+  "id": 2,
+  "method": "tools/call",
+  "params": {"name":"get_onedrive_root_folders","arguments":{}}
+}
