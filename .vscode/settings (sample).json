@@ -15,6 +15,7 @@
             "azure_openai_fallback_endpoint": "https://*****.openai.azure.com/",
             "azure_openai_fallback_servicename": "*****",
             "azure_openai_fallback_apikey": "*****",
+            "bearertoken_for_mcp": "eyJ***",
             "bearertoken_for_cognitiveservices": "*****",
             "azure_openai_api_version": "2025-04-28",
             "azure_openai_api_version_preview": "2025-04-01-preview",
