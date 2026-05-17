@@ -79,7 +79,7 @@ This is correct security behaviour: you should never bake secrets into an image.
 So, don't use .env from the COPY instruction, but pass the .env at runtime instead:
 ```bash
 # Build the image
-docker build -t mcp-onedrive-demo .
+docker build -t <image-name> .
 
 # Run the container (mapping host port 8010 → container port 8000)
 docker run -p 8010:8000 \
@@ -90,6 +90,24 @@ docker run -p 8010:8000 \
   
 # or, since they're already defined in your .env file, pass them without values to inherit from the current shell environment:
 docker run -p 8010:8000 --env-file .env <image-name>
+
+# or, in case of local debugging:
+docker run                              # runs container
+  -p 8010:8000 -p 5678:5678             # maps ports, inlcuding debugging port 5678
+  --env-file .env                       # loads environment variables
+  --entrypoint python                   # rather than "CMD" of Dockerfile, we use "python" as executable
+  mcp-onedrive-demo                     # ← here use use our image name, listable with `docker images`
+  -m debugpy --listen 0.0.0.0:5678 --wait-for-client mcp_server.py
+  # ↑ questi sono gli argomenti passati a "python"
+  # exquivalent to: `python -m debugpy --listen 0.0.0.0:5678 --wait-for-client mcp_server.py`
+
+# just to copy'n'paste:
+docker run \
+  -p 8010:8000 -p 5678:5678 \
+  --env-file .env \
+  --entrypoint python \
+  mcp-onedrive-demo \
+  -m debugpy --listen 0.0.0.0:5678 --wait-for-client mcp_server.py
 
 # such variables might be defined in our shell's startup file.
 # For bash, append to ~/.bashrc (interactive shells) or ~/.bash_profile (login shells):

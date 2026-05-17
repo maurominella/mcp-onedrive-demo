@@ -6,3 +6,4 @@ azure-identity
 azure-core
 azure-monitor-opentelemetry
 python-dotenv
+debugpy

@@ -11,6 +11,7 @@ How it works:
 5. Returns folder names and sizes — proving identity was the user's, not the app's.
 """
 
+import os
 from dotenv import load_dotenv
 load_dotenv()  # MUST be first: env vars must be set before any import reads them
 
@@ -28,7 +29,6 @@ if os.environ.get("APPLICATIONINSIGHTS_CONNECTION_STRING"):
     configure_azure_monitor(logging_level=logging.INFO)  # capture INFO+ in App Insights (default is WARNING)
 
 import contextvars
-import os
 import logging
 import msal
 import requests as http_requests

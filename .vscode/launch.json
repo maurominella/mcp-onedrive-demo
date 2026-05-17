@@ -1,0 +1,28 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            // Attaches to a Python process already running inside Docker with debugpy.
+            // Start the container first with:
+            //   docker run -p 8010:8000 -p 5678:5678 --env-file .env \
+            //     --entrypoint python <image-name> \
+            //     -m debugpy --listen 0.0.0.0:5678 --wait-for-client mcp_server.py
+            // The server will pause until VS Code connects (F5 with this config selected).
+            "name": "Attach to Docker (debugpy)",
+            "type": "debugpy",
+            "request": "attach",
+            "connect": {
+                "host": "localhost",
+                "port": 5678
+            },
+            "pathMappings": [
+                {
+                    // Maps the container's /app directory to the local workspace root,
+                    // so VS Code can resolve breakpoints to the correct source files.
+                    "localRoot": "${workspaceFolder}",
+                    "remoteRoot": "/app"
+                }
+            ]
+        }
+    ]
+}

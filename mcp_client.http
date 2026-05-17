@@ -1,9 +1,9 @@
 # https://learn.microsoft.com/en-us/azure/ai-services/agents/quickstart?pivots=rest-api
 # az login --use-device-code --tenant <your-tenant-id-or-domain>
-# APP_OBJ_ID=36dc7b8a-eb7d-4f66-b3fa-7649893ceed6
-# APP_ID_URI=$(az ad app show --id $APP_OBJ_ID --query "identifierUris[0]" -o tsv | tr -d '\r') | echo $APP_ID_URI
-# SCOPE_VALUE=$(az ad app show --id $APP_OBJ_ID --query "api.oauth2PermissionScopes[0].value" -o tsv | tr -d '\r') | echo $SCOPE_VALUE
-# TOKEN=$(az account get-access-token --scope "${APP_ID_URI}/${SCOPE_VALUE}" --query accessToken -o tsv) | echo $TOKEN
+# APP_OBJ_ID=36dc7b8a-eb7d-4f66-b3fa-7649893ceed6; echo $APP_OBJ_ID
+# APP_ID_URI=$(az ad app show --id $APP_OBJ_ID --query "identifierUris[0]" -o tsv | tr -d '\r'); echo $APP_ID_URI
+# SCOPE_VALUE=$(az ad app show --id $APP_OBJ_ID --query "api.oauth2PermissionScopes[0].value" -o tsv | tr -d '\r'); echo $SCOPE_VALUE
+# TOKEN=$(az account get-access-token --scope "${APP_ID_URI}/${SCOPE_VALUE}" --query accessToken -o tsv); echo $TOKEN
 
 
 # Just if pre-authorization is needed, run this:
@@ -23,7 +23,7 @@
 #   }"
 
 
-@baseUrl = http://localhost:8000
+@baseUrl = http://localhost:8010
 
 ### get the list of tools
 POST {{baseUrl}}/mcp
