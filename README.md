@@ -73,10 +73,7 @@ deactivate
 ```
 
 
-## Running the Agent Locally
-
-
-## Local Container Build & Test
+## Running the Agent Locally: Local Container Build & Test
 The .dockerignore intentionally excludes .env from the build context (so it never reaches Docker).
 This is correct security behaviour: you should never bake secrets into an image.
 So, don't use .env from the COPY instruction, but pass the .env at runtime instead:
