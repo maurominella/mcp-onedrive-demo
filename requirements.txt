@@ -1,0 +1,6 @@
+mcp
+uvicorn
+msal
+requests
+azure-identity
+azure-core
