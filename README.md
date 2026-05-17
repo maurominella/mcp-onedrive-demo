@@ -77,31 +77,22 @@ deactivate
 
 
 ## Local Container Build & Test
-The .dockerignore intentionally excludes .env from the build context (so it never reaches Docker). This is correct security behaviour: you should never bake secrets into an image.
+The .dockerignore intentionally excludes .env from the build context (so it never reaches Docker).
+This is correct security behaviour: you should never bake secrets into an image.
 So, don't use .env from the COPY instruction, but pass the .env at runtime instead:
 ```bash
 # Build the image
 docker build -t mcp-onedrive-demo .
 
-# Run the container (mapping host port 8090 → container port 8088)
-docker run -p 8010:8000 --env-file .env ha02-azureopenaitagent
-
-# or
+# Run the container (mapping host port 8010 → container port 8000)
 docker run -p 8010:8000 \
   -e AZURE_TENANT_ID=<your-tenant-id> \
   -e AZURE_CLIENT_ID=<your-client-id> \
-  -e AZURE_CLIENT_SECRET=<your-client-secret> \
-  --env-file .env \
-  ha02-azureopenaitagent:latest
-
+  -e AZURE_CLIENT_SECRET=<your-client-secret> 
+  <image-name>
+  
 # or, since they're already defined in your .env file, pass them without values to inherit from the current shell environment:
-docker run -p 8010:8000 \
-  -e AZURE_TENANT_ID \
-  -e AZURE_CLIENT_ID \
-  -e AZURE_CLIENT_SECRET \
-  --env-file .env \
-  ha02-azureopenaitagent:latest
-
+docker run -p 8010:8000 --env-file .env <image-name>
 
 # such variables might be defined in our shell's startup file.
 # For bash, append to ~/.bashrc (interactive shells) or ~/.bash_profile (login shells):
