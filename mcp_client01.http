@@ -23,7 +23,7 @@
 #   }"
 
 # either http://localhost:8010 or https://mcp-onedrive-demo.ambitiousrock-79574fa4.swedencentral.azurecontainerapps.io
-@baseUrl = https://mcp-onedrive-demo.ambitiousrock-79574fa4.swedencentral.azurecontainerapps.io 
+@baseUrl = http://localhost:8000
 
 ### get the list of tools
 POST {{baseUrl}}/mcp

@@ -24,6 +24,7 @@ load_dotenv()  # MUST be first: env vars must be set before any import reads the
 #   "Overriding of current TracerProvider is not allowed"
 # These are cosmetic only: they fire once at startup, do not affect runtime behaviour,
 # and are not worth working around with extra complexity.
+
 if os.environ.get("APPLICATIONINSIGHTS_CONNECTION_STRING"):
     from azure.monitor.opentelemetry import configure_azure_monitor
     configure_azure_monitor(logging_level=logging.INFO)  # capture INFO+ in App Insights (default is WARNING)
