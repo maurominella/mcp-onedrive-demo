@@ -101,15 +101,14 @@ def _obo_exchange(user_token: str) -> str:
 
     return result["access_token"]
 
-
-
+###################################################################################################
 mcp = FastMCP(
     "onedrive-demo",
     stateless_http=True,
     transport_security=TransportSecuritySettings(enable_dns_rebinding_protection=False),
 )
 
-
+###################################################################################################
 @mcp.tool()
 def get_onedrive_root_folders() -> list[dict]:
     """
@@ -123,7 +122,7 @@ def get_onedrive_root_folders() -> list[dict]:
 
     # Log the user identity from the incoming token (no extra Graph call needed)
     identity = _decode_jwt_claims(user_token)
-    logger.info("Incoming token identity: %s", identity.get("preferred_username") or identity.get("oid"))
+    logger.info("Incoming token identity: %s", identity.get("name") or identity.get("oid"))
 
     logger.info("Performing OBO exchange...")
     graph_token = _obo_exchange(user_token)
@@ -142,6 +141,43 @@ def get_onedrive_root_folders() -> list[dict]:
         for item in items
     ]
 
+@mcp.tool()
+def WhoAmI() -> dict:
+    """
+    Returns the identity from the incoming token, without performing OBO.
+    This will show the difference between user and app tokens: user tokens
+    will contain username/email, while app tokens will not.
+    """
+    user_token = _get_bearer_token()
+    if not user_token:
+        raise RuntimeError("No Bearer token found in request")
+
+    identity = _decode_jwt_claims(user_token)
+    logger.info("whoami tool called. Incoming token identity: %s", identity.get("preferred_username") or identity.get("oid"))
+    return [
+        {
+            item[0]: item[1]
+        }
+        for item in identity.items()
+    ]
+
+@mcp.tool()
+def create_ticket(description: str) -> dict:
+    """
+    Simulates the creation of a ticket in a service desk. It takes the user identity from the token and the input from the user, and returns a fake ticket.
+    This is to show how you can use the user identity from the token to perform actions on behalf of the user.
+    """
+    user_token = _get_bearer_token()
+    if not user_token:
+        raise RuntimeError("No Bearer token found in request")
+
+    identity = _decode_jwt_claims(user_token)
+    logger.info("create_ticket tool called. Incoming token identity: %s", identity.get("preferred_username") or identity.get("oid"))
+    return {
+        "ticket_id": len(description),
+        "user": identity.get("name") or identity.get("oid"),
+        "description": description
+    }
 
 if __name__ == "__main__":
     import uvicorn

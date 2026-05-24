@@ -4,7 +4,7 @@
 # This is the *application token* that identifies the Foundry application itself.
 # It does NOT represent the user and cannot be used as a user token.
 #
-# The MCP Server uses it to verify that the caller is indeed Foundry.
+# The MCP Server uses it to verify that the caller application is indeed Foundry.
 # Since it is issued by Entra ID, Foundry does not require any special configuration
 # to accept it (no need to register or trust the MCP app inside Foundry).
 #
@@ -56,8 +56,6 @@
 ###################################################################################################
 
 
-
-
 """
 This sample demonstrates how to implement an MCP Server that performs OBO to Graph 
 when called from a Foundry Agent. The flow is as follows:
@@ -73,7 +71,7 @@ when called from a Foundry Agent. The flow is as follows:
 1️⃣ DefaultAzureCredential → rappresenta l'IDENTITÀ dell'applicazione che chiama Foundry
 Questo token serve a:
 - autenticare la tua app verso Foundry
-- dire “sono l'app X, registrata nel tenant Y”
+- dire "sono l'app X, registrata nel tenant Y"
 - NON rappresenta l'utente
 - NON contiene nome, email, UPN
 - è un token app-only
@@ -108,7 +106,7 @@ E questi due ruoli non possono mai essere fusi in un token unico.
 
 
 🧩 Schema finale (quello che devi ricordare)
-DefaultAzureCredential → token app
+DefaultAzureCredential → app token
 - usato per autenticare la tua app verso Foundry
 - non contiene nome utente
 - non richiede consenso utente
@@ -133,7 +131,7 @@ from azure.identity import DefaultAzureCredential, AzureCliCredential
 """
 - DefaultAzureCredential() è solo un motore
 - AIProjectClient gli dice: "Ottienimi un token per questa audience Foundry"
-- DefaultAzureCredential() risponde: "Ecco un token per questa audience, credi ado a me, sono un motore 
+- DefaultAzureCredential() risponde: "Ecco un token per questa audience, credi a me, sono un motore 
   che prova diverse strategie per ottenere un token, e questa è quella che ha funzionato"       
 
 For DefaultAzureCredential, the credentials chain is:
@@ -174,8 +172,8 @@ default_cred = DefaultAzureCredential(
 # The MCP Server uses this app-token only as the "client assertion" in the OBO flow,
 # to exchange the user-token (issued for Foundry) into a Graph token.
 # The app-token is never used to call Graph directly.
-# L’app‑token serve solo al MCP server per autenticare Foundry e per completare l’OBO.
-# Non rappresenta l’utente, non chiama Graph, non chiama Foundry.
+# L'app‑token serve solo al MCP server per autenticare Foundry e per completare l’OBO.
+# Non rappresenta l'utente, non chiama Graph, non chiama Foundry.
 foundry_token = default_cred.get_token("https://ai.azure.com/.default").token
 
 project_client = AIProjectClient(

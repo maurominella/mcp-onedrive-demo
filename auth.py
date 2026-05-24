@@ -80,10 +80,11 @@ def _decode_jwt_claims(access_token: str) -> dict:
         # Extract useful identity fields
         return {
             "name": claims.get("name"),
-            "preferred_username": claims.get("preferred_username"),
-            "oid": claims.get("oid"),
-            "tid": claims.get("tid"),
             "upn": claims.get("upn"),
+            "appid": claims.get("appid"),
+            "aud": claims.get("aud"),
+            "scp": claims.get("scp"),
+            "oid": claims.get("oid"),
             "raw_claims": claims
         }
     except Exception as e:

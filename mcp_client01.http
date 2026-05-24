@@ -22,10 +22,10 @@
 #     }
 #   }"
 
-# either http://localhost:8010 or https://mcp-onedrive-demo.ambitiousrock-79574fa4.swedencentral.azurecontainerapps.io
+# either http://localhost:8000 or  http://localhost:8010 or https://mcp-onedrive-demo.ambitiousrock-79574fa4.swedencentral.azurecontainerapps.io
 @baseUrl = http://localhost:8000
 
-### get the list of tools
+### get the list of tools - UN-AUTHENTICATED or FAKE-AUTEHTNCIATION, just to see the metadata of the tools
 POST {{baseUrl}}/mcp
 Content-Type: application/json
 Accept: application/json, text/event-stream
@@ -37,6 +37,35 @@ Authorization: Bearer {{bearertoken_for_mcp}}
   "method": "tools/list",
   "params": {}
 }
+
+
+### runs WhoAmI tool to verify the authentication and get the user info
+POST {{baseUrl}}/mcp
+Content-Type: application/json
+Accept: application/json, text/event-stream
+Authorization: Bearer {{bearertoken_for_mcp}}
+
+{
+  "jsonrpc": "2.0",
+  "id": 2,
+  "method": "tools/call",
+  "params": {"name":"WhoAmI","arguments":{}}
+}
+
+
+### runs WhoAmI tool to verify the authentication and get the user info
+POST {{baseUrl}}/mcp
+Content-Type: application/json
+Accept: application/json, text/event-stream
+Authorization: Bearer {{bearertoken_for_mcp}}
+
+{
+  "jsonrpc": "2.0",
+  "id": 2,
+  "method": "tools/call",
+  "params": {"name":"create_ticket","arguments":{"description":"My computer is on fire"}}
+}
+
 
 ### invoke an MCP tool (e.g. get_onedrive_root_folders)
 POST {{baseUrl}}/mcp

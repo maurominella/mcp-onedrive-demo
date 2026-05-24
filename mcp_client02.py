@@ -25,19 +25,19 @@ app = msal.PublicClientApplication(
 result = app.acquire_token_interactive(scopes=scopes)
 
 if "access_token" not in result:
-    raise Exception("Errore durante l'autenticazione utente")
+    raise Exception("Error during user authentication")
 
 user_token = result["access_token"]
 print(f"User's token: {user_token[:60]}...")
 
 
 
-# === 3. CHIAMATA ALLE RESPONSES API CON TOKEN UTENTE ===
+# === 3. CALL RESPONSES API WITH USER TOKEN ===
 endpoint = "https://<foundry-endpoint>/openai/responses?api-version=2024-10-01-preview"
 
 payload = {
     "input": [
-        {"role": "user", "content": "Dimmi quali permessi ho come utente."}
+        {"role": "user", "content": "Tell me what permissions I have as a user."}
     ],
     "agent_reference": {
         "type": "agent_reference",
