@@ -52,6 +52,7 @@ if not logger.handlers: # avoid adding multiple handlers if this code is reloade
 # --------------------------------------------------------------------------
 
 CLIENT_ID = os.environ["MCP_CLIENT_ID"]
+MCP_CLIENT_SCOPE = os.environ["MCP_CLIENT_SCOPE"]
 CLIENT_SECRET = os.environ["MCP_CLIENT_SECRET"]
 TENANT_ID = os.environ["MCP_TENANT_ID"]
 
@@ -61,7 +62,7 @@ _incoming_token: contextvars.ContextVar[str | None] = contextvars.ContextVar(
 )
 
 class TokenExtractMiddleware:
-    """ASGI middleware that extracts the Bearer token from each request
+    """ASGI middleware that extracts the Bearer token from each requestperò per poter
     and stores it in a ContextVar so tool handlers can access it."""
 
     def __init__(self, app):
@@ -100,6 +101,19 @@ def _obo_exchange(user_token: str) -> str:
         raise RuntimeError(f"OBO exchange failed: {error}")
 
     return result["access_token"]
+
+def _validate_token_audience(token: str) -> bool:
+    """
+    Check that the token has the expected audience and scope for our app.
+    This is a sanity check to provide clearer errors when the token is not what we expect 
+    (e.g. an app-only token instead of a user token).
+    """
+
+    claims = _decode_jwt_claims(token)
+    aud = claims.get("aud")
+    scp = claims.get("scp")
+    logger.info("Validating token audience. aud: %s, scp: %s", aud, scp)
+    return aud == f"api://{CLIENT_ID}" and scp == MCP_CLIENT_SCOPE
 
 ###################################################################################################
 mcp = FastMCP(
@@ -151,8 +165,11 @@ def WhoAmI() -> dict:
     user_token = _get_bearer_token()
     if not user_token:
         raise RuntimeError("No Bearer token found in request")
-
+    elif not _validate_token_audience(user_token):
+        raise RuntimeError("Invalid token audience or scope — expected api://<CLIENT_ID> with scope access_as_user")
+    
     identity = _decode_jwt_claims(user_token)
+
     logger.info("whoami tool called. Incoming token identity: %s", identity.get("preferred_username") or identity.get("oid"))
     return [
         {
@@ -170,6 +187,8 @@ def create_ticket(description: str) -> dict:
     user_token = _get_bearer_token()
     if not user_token:
         raise RuntimeError("No Bearer token found in request")
+    elif not _validate_token_audience(user_token):
+        raise RuntimeError("Invalid token audience or scope — expected api://<CLIENT_ID> with scope access_as_user")
 
     identity = _decode_jwt_claims(user_token)
     logger.info("create_ticket tool called. Incoming token identity: %s", identity.get("preferred_username") or identity.get("oid"))

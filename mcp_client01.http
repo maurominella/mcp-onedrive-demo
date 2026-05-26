@@ -53,7 +53,7 @@ Authorization: Bearer {{bearertoken_for_mcp}}
 }
 
 
-### runs WhoAmI tool to verify the authentication and get the user info
+### runs create_ticket tool to verify the authentication and get the user info
 POST {{baseUrl}}/mcp
 Content-Type: application/json
 Accept: application/json, text/event-stream
@@ -79,3 +79,8 @@ Authorization: Bearer {{bearertoken_for_mcp}}
   "method": "tools/call",
   "params": {"name":"get_onedrive_root_folders","arguments":{}}
 }
+
+### invoke MS Graph API directly, using the graph access token (not the MCP token)
+GET https://graph.microsoft.com/v1.0/me/drive/root/children
+Content-Type: application/json
+Authorization: Bearer {{bearertoken_for_msgraph}}
