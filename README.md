@@ -41,7 +41,7 @@ Then I configure the MCP endpoint in a Foundry prompt agent with OAuth2 passthro
 When a user prompt requires one of the MCP tools, Foundry/Copilot requests one-time user consent:
 ![Consent request](./_README_images/consent_request.png)
 
-After consent, an interactive sign-in flow asks the user to authenticate against the MCP server. The resulting bearer token is stored by the Authentication Manager:
+After consent, an interactive sign-in flow asks the user to authenticate against the MCP server. The resulting bearer token is stored by the Authentication Manager:<br/>
 ![Consent completion](./_README_images/consent_response.png)
 
 In this setup, Foundry does not mint an MCP-scoped token from a Foundry token. Instead, it relies on Credential Manager/Authentication Manager to forward the collected token to the MCP server when the tool is invoked.
