@@ -4,30 +4,55 @@ Authenticated MCP Server with OBO to read user's files from their OneDrive throu
 
 ## What this sample demonstrates
 
-This sample demonstrates a **key advantage of code-based hosted agents**:
+[mcp_server.py](./mcp_server.py) implements a Python MCP server over HTTP that supports user-delegated access to Microsoft Graph via OAuth 2.0 On-Behalf-Of (OBO).
 
-- **Local Python tool execution** - Run custom Python functions as agent tools
+### Why it works
+The server:
+- reads the incoming bearer token from each MCP request,
+- stores it per request,
+- validates audience and scope for non-Graph tools,
+- exchanges it through OBO when a Graph call is needed.
 
-Code-based agents can execute **any Python code** you write. This sample includes a Seattle Hotel Agent with a `get_available_hotels` tool that searches for available hotels based on check-in/check-out dates and budget preferences.
+This design keeps the user identity end-to-end and avoids app-only access for user data.
 
-The agent is hosted using the [Azure AI AgentServer SDK](https://pypi.org/project/azure-ai-agentserver-agentframework/) and can be deployed to Microsoft Foundry.
+### How it works
+With the delegated Graph token obtained via OBO by the Uvicorn ASGI server app registration:
 
-## How It Works
+![Registered application](./_README_images/registered_application.png)
 
-### Local Tools Integration
+the server calls OneDrive endpoints (for example, `/me/drive/root/children`) and returns normalized tool output. This proves that actions run as the end user, not as an app-only identity.
 
-In [main.py](main.py), the agent uses a local Python function (`get_available_hotels`) that simulates a hotel availability API. This demonstrates how code-based agents can execute custom server-side logic that prompt agents cannot access.
+#### Token model
+- The incoming token is expected to target this app audience (`api://<client-id>`) with the configured delegated scope.
+- For local testing (as shown in [mcp_client01.http](./mcp_client01.http)), I get a token with:
+  `az account get-access-token --scope "${APP_ID_URI}/${SCOPE_VALUE}"`
+- For tools that only need identity inspection, I decode JWT claims locally (no Graph call required).
+- For OneDrive access, I run OBO with MSAL `ConfidentialClientApplication` (client ID, client secret, tenant authority).
+- The OBO exchange requests delegated Graph permission (`Files.Read`) and returns a Graph access token.
 
-The tool accepts:
+### Hosting model
+I use [Dockerfile](./Dockerfile) to build the container image in ACR, then deploy that image to Azure Container Apps (ACA):
+![ACA deployment](./_README_images/aca.png)
 
-- **check_in_date** - Check-in date in YYYY-MM-DD format
-- **check_out_date** - Check-out date in YYYY-MM-DD format
-- **max_price** - Maximum price per night in USD (optional, defaults to $500)
+Then I configure the MCP endpoint in a Foundry prompt agent with OAuth2 passthrough:
+![MCP configuration in Foundry](./_README_images/mcp_configuration_for_aca.png)
 
-### Agent Hosting
+### Running in Microsoft Foundry Playground or in M365 Copilot
+When a user prompt requires one of the MCP tools, Foundry/Copilot requests one-time user consent:
+![Consent request](./_README_images/consent_request.png)
 
-The agent is hosted using the [Azure AI AgentServer SDK](https://pypi.org/project/azure-ai-agentserver-agentframework/),
-which provisions a REST API endpoint compatible with the OpenAI Responses protocol.
+After consent, an interactive sign-in flow asks the user to authenticate against the MCP server. The resulting bearer token is stored by the Authentication Manager:
+![Consent completion](./_README_images/consent_response.png)
+
+In this setup, Foundry does not mint an MCP-scoped token from a Foundry token. Instead, it relies on Credential Manager/Authentication Manager to forward the collected token to the MCP server when the tool is invoked.
+
+### Final outcome
+This is the result in **Foundry Playground**:
+
+![Foundry Playground result](./_README_images/foundryplayground_obo.png)
+
+The behavior is effectively the same in **M365 Copilot**:
+![M365 Copilot result](./_README_images/m365copilot_obo.png)
 
 ## Quick Start
 
