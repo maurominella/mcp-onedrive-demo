@@ -99,9 +99,9 @@ deactivate
 
 
 ## Running the Agent Locally: Local Container Build & Test
-The .dockerignore intentionally excludes .env from the build context (so it never reaches Docker).
-This is correct security behaviour: you should never bake secrets into an image.
-So, don't use .env from the COPY instruction, but pass the .env at runtime instead:
+The `.dockerignore` intentionally excludes `.env` from the build context so secrets never end up in the image.
+This is the correct security behavior: do not bake credentials into container layers.
+Instead of copying `.env` into the image, pass it at runtime:
 ```bash
 # Build the image
 docker build -t <image-name> .
@@ -110,23 +110,23 @@ docker build -t <image-name> .
 docker run -p 8010:8000 \
   -e AZURE_TENANT_ID=<your-tenant-id> \
   -e AZURE_CLIENT_ID=<your-client-id> \
-  -e AZURE_CLIENT_SECRET=<your-client-secret> 
+  -e AZURE_CLIENT_SECRET=<your-client-secret> \
   <image-name>
   
-# or, since they're already defined in your .env file, pass them without values to inherit from the current shell environment:
+# Or load variables directly from the .env file:
 docker run -p 8010:8000 --env-file .env <image-name>
 
-# or, in case of local debugging:
-docker run                              # runs container
-  -p 8010:8000 -p 5678:5678             # maps ports, inlcuding debugging port 5678
+# For local debugging:
+docker run                              # runs the container
+  -p 8010:8000 -p 5678:5678             # maps ports, including debug port 5678
   --env-file .env                       # loads environment variables
-  --entrypoint python                   # rather than "CMD" of Dockerfile, we use "python" as executable
-  mcp-onedrive-demo                     # ← here use use our image name, listable with `docker images`
+  --entrypoint python                   # use python instead of the Dockerfile CMD
+  mcp-onedrive-demo                     # replace with your image name (see: docker images)
   -m debugpy --listen 0.0.0.0:5678 --wait-for-client mcp_server.py
-  # ↑ questi sono gli argomenti passati a "python"
-  # exquivalent to: `python -m debugpy --listen 0.0.0.0:5678 --wait-for-client mcp_server.py`
+  # these are arguments passed to python
+  # equivalent to: python -m debugpy --listen 0.0.0.0:5678 --wait-for-client mcp_server.py
 
-# just to copy'n'paste:
+# Copy-paste version:
 docker run \
   -p 8010:8000 -p 5678:5678 \
   --env-file .env \
@@ -134,7 +134,7 @@ docker run \
   mcp-onedrive-demo \
   -m debugpy --listen 0.0.0.0:5678 --wait-for-client mcp_server.py
 
-# such variables might be defined in our shell's startup file.
+# Optionally persist environment variables in your shell startup file.
 # For bash, append to ~/.bashrc (interactive shells) or ~/.bash_profile (login shells):
 echo 'export AZURE_TENANT_ID=3ad***' >> ~/.bashrc
 echo 'export AZURE_CLIENT_ID=31***' >> ~/.bashrc
