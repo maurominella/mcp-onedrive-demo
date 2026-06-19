@@ -72,6 +72,8 @@ class TokenExtractMiddleware:
         if scope["type"] == "http":
             headers = dict(scope.get("headers", []))
             auth = headers.get(b"authorization", b"").decode()
+            user_token = headers.get(b"x-ms-user-token", b"").decode()
+            print(user_token)
             token = auth[7:] if auth.startswith("Bearer ") else None
             _incoming_token.set(token)
         await self.app(scope, receive, send)

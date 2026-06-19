@@ -25,6 +25,12 @@
 # either http://localhost:8000 or  http://localhost:8010 or https://mcp-onedrive-demo.ambitiousrock-79574fa4.swedencentral.azurecontainerapps.io
 @baseUrl = http://localhost:8000
 
+@foundry_project_endpoint = https://foundry7159.services.ai.azure.com/api/projects/aif7159-standard-agent-project
+
+@agent_name = custom-mcp-agent-01
+@agent_version = 5
+
+
 ### get the list of tools - UN-AUTHENTICATED or FAKE-AUTEHTNCIATION, just to see the metadata of the tools
 POST {{baseUrl}}/mcp
 Content-Type: application/json
@@ -84,3 +90,13 @@ Authorization: Bearer {{bearertoken_for_mcp}}
 GET https://graph.microsoft.com/v1.0/me/drive/root/children
 Content-Type: application/json
 Authorization: Bearer {{bearertoken_for_msgraph}}
+
+### invoke the agent
+POST {{foundry_project_endpoint}}/responses?api-version=2024-10-01-preview
+Content-Type: application/json
+Authorization: Bearer {{bearertoken_for_aiazurecom}}
+
+{
+  "input": [{"role": "user", "content": "what can you do?"}],
+  "extra_body": {"agent_reference": {"name": "{{agent_name}}", "version": "{{agent_version}}", "type": "agent_reference"}}
+}
