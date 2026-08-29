@@ -103,6 +103,10 @@ The `.dockerignore` intentionally excludes `.env` from the build context so secr
 This is the correct security behavior: do not bake credentials into container layers.
 Instead of copying `.env` into the image, pass it at runtime:
 ```bash
+# Clean the environment if needed:
+for id in $(docker images -aq); do docker rmi -f "$id"; done
+for id in $(docker ps -aq); do docker rm -f "$id"; done
+
 # Build the image
 docker build -t <image-name> .
 

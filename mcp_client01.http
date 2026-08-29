@@ -1,6 +1,6 @@
 # https://learn.microsoft.com/en-us/azure/ai-services/agents/quickstart?pivots=rest-api
 # az login --use-device-code --tenant <your-tenant-id-or-domain>
-# APP_OBJ_ID=36dc7b8a-eb7d-4f66-b3fa-7649893ceed6; echo $APP_OBJ_ID
+# APP_OBJ_ID=$(az ad app show --id 1584713c-4129-46b7-b4c2-333df819ef5c --query "id" -o tsv | tr -d '\r'); echo $APP_OBJ_ID
 # APP_ID_URI=$(az ad app show --id $APP_OBJ_ID --query "identifierUris[0]" -o tsv | tr -d '\r'); echo $APP_ID_URI
 # SCOPE_VALUE=$(az ad app show --id $APP_OBJ_ID --query "api.oauth2PermissionScopes[0].value" -o tsv | tr -d '\r'); echo $SCOPE_VALUE
 # TOKEN=$(az account get-access-token --scope "${APP_ID_URI}/${SCOPE_VALUE}" --query accessToken -o tsv); echo $TOKEN
@@ -22,8 +22,8 @@
 #     }
 #   }"
 
-# either http://localhost:8000 or  http://localhost:8010 or https://mcp-onedrive-demo.ambitiousrock-79574fa4.swedencentral.azurecontainerapps.io
-@baseUrl = http://localhost:8000
+# either http://localhost:8000 or  http://localhost:8010 or https://mcp-onedrive-demo01.delightfulpebble-c37a75cf.swedencentral.azurecontainerapps.io
+@baseUrl = https://mcp-onedrive-demo01.delightfulpebble-c37a75cf.swedencentral.azurecontainerapps.io
 
 @foundry_project_endpoint = https://foundry7159.services.ai.azure.com/api/projects/aif7159-standard-agent-project
 

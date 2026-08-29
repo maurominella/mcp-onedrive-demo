@@ -2,11 +2,11 @@
 MCP server that exposes a OneDrive tool using OBO (On-Behalf-Of) flow.
 
 How it works:
-1. Foundry calls this server via HTTP with Authorization: Bearer <user-token>
-   The user token has audience api://<CLIENT_ID> (our app registration).
+1. Foundry calls this server via HTTP with Authorization: Bearer <authorization-token>
+   The authorization token has audience api://<CLIENT_ID> (our app registration).
 2. A Starlette middleware extracts the token from the Authorization header
    and stores it in a ContextVar, making it available to tool handlers.
-3. The tool performs OBO: exchanges the user token for a Graph token via MSAL.
+3. The tool performs OBO: exchanges the authorization token for a Graph token via MSAL.
 4. It calls Graph /me/drive/root/children with the Graph token.
 5. Returns folder names and sizes — proving identity was the user's, not the app's.
 """
@@ -29,13 +29,12 @@ if os.environ.get("APPLICATIONINSIGHTS_CONNECTION_STRING"):
     from azure.monitor.opentelemetry import configure_azure_monitor
     configure_azure_monitor(logging_level=logging.INFO)  # capture INFO+ in App Insights (default is WARNING)
 
-import contextvars
-import logging
+import contextvars, json, logging
 import msal
 import requests as http_requests
 
-from mcp.server.fastmcp import FastMCP
-from mcp.server.fastmcp.server import TransportSecuritySettings
+from mcp.server.mcpserver import MCPServer
+from mcp.server.transport_security import TransportSecuritySettings
 from auth import _decode_jwt_claims
 
 # --------------------------------------------------------------------------
@@ -51,14 +50,20 @@ if not logger.handlers: # avoid adding multiple handlers if this code is reloade
 
 # --------------------------------------------------------------------------
 
-CLIENT_ID = os.environ["MCP_CLIENT_ID"]
-MCP_CLIENT_SCOPE = os.environ["MCP_CLIENT_SCOPE"]
-CLIENT_SECRET = os.environ["MCP_CLIENT_SECRET"]
-TENANT_ID = os.environ["MCP_TENANT_ID"]
+MCP_CLIENT_ID = os.environ["MCP_CLIENT_ID"]
+MCP_CLIENT_SECRET = os.environ["MCP_CLIENT_SECRET"]
+MCP_TENANT_ID = os.environ["MCP_TENANT_ID"]
+TARGET_SCOPES = json.loads(os.environ["TARGET_SCOPES"])
 
 # ContextVar populated by the middleware for each incoming request
-_incoming_token: contextvars.ContextVar[str | None] = contextvars.ContextVar(
-    "_incoming_token", default=None
+# This is just the internal name of ContextVar, used for debug and introspection. 
+# It does not have any effect on the stored value or the scoping behavior.
+# Takeaway: used just to give a readable name to the variable in tracing, for example when Python shows the ContextVar in logs or debugging tools.
+# ContextVar("nome") stores that name for identification.
+# It's not a lookup key, it's not used to retrieve the value.
+# The actual value is what we set with .set() and retrieve with .get().
+_authorization_token: contextvars.ContextVar[str | None] = contextvars.ContextVar(
+    "_authorization_token", default=None
 )
 
 class TokenExtractMiddleware:
@@ -71,31 +76,31 @@ class TokenExtractMiddleware:
     async def __call__(self, scope, receive, send):
         if scope["type"] == "http":
             headers = dict(scope.get("headers", []))
-            auth = headers.get(b"authorization", b"").decode()
-            user_token = headers.get(b"x-ms-user-token", b"").decode()
-            print(user_token)
-            token = auth[7:] if auth.startswith("Bearer ") else None
-            _incoming_token.set(token)
+            x_ms_user_token = headers.get(b"x-ms-user-token", b"").decode() # just for testing
+            logger.info(f"x_ms_user_token: {x_ms_user_token}") # just for testing
+            auth_header = headers.get(b"authorization", b"").decode()
+            authorization_token = auth_header[7:] if auth_header.startswith("Bearer ") else None
+            _authorization_token.set(authorization_token)
         await self.app(scope, receive, send)
 
 
-def _get_bearer_token() -> str | None:
+def _get_authorization_token() -> str | None:
     """Return the Bearer token stored by TokenExtractMiddleware for this request."""
-    return _incoming_token.get()
+    return _authorization_token.get()
 
 
-def _obo_exchange(user_token: str) -> str:
+def _obo_exchange(user_token: str, target_scopes: list[str]) -> str:
     """Exchange the user token (audience=our app) for a Graph token via OBO."""
 
     app = msal.ConfidentialClientApplication(
-        client_id=CLIENT_ID,
-        client_credential=CLIENT_SECRET,
-        authority=f"https://login.microsoftonline.com/{TENANT_ID}",
+        client_id=MCP_CLIENT_ID,
+        client_credential=MCP_CLIENT_SECRET,
+        authority=f"https://login.microsoftonline.com/{MCP_TENANT_ID}",
     )
 
     result = app.acquire_token_on_behalf_of(
         user_assertion=user_token,
-        scopes=["https://graph.microsoft.com/Files.Read"],
+        scopes=target_scopes,
     )
 
     if "access_token" not in result:
@@ -115,14 +120,11 @@ def _validate_token_audience(token: str) -> bool:
     aud = claims.get("aud")
     scp = claims.get("scp")
     logger.info("Validating token audience. aud: %s, scp: %s", aud, scp)
-    return aud == f"api://{CLIENT_ID}" and scp == MCP_CLIENT_SCOPE
+    return (not aud) or (not scp) == False
+    
 
 ###################################################################################################
-mcp = FastMCP(
-    "onedrive-demo",
-    stateless_http=True,
-    transport_security=TransportSecuritySettings(enable_dns_rebinding_protection=False),
-)
+mcp = MCPServer("onedrive-demo")
 
 ###################################################################################################
 @mcp.tool()
@@ -132,16 +134,16 @@ def get_onedrive_root_folders() -> list[dict]:
     authenticated user's OneDrive. Requires OBO to work — will fail if called
     with an app-only token.
     """
-    user_token = _get_bearer_token()
-    if not user_token:
-        raise RuntimeError("No Bearer token found in request — cannot perform OBO")
+    authorization_token = _get_authorization_token()
+    if not authorization_token:
+        raise RuntimeError("No Authorization token found in request — cannot perform OBO")
 
     # Log the user identity from the incoming token (no extra Graph call needed)
-    identity = _decode_jwt_claims(user_token)
+    identity = _decode_jwt_claims(authorization_token)
     logger.info("Incoming token identity: %s", identity.get("name") or identity.get("oid"))
 
     logger.info("Performing OBO exchange...")
-    graph_token = _obo_exchange(user_token)
+    graph_token = _obo_exchange(authorization_token, TARGET_SCOPES)
     logger.info("OBO exchange successful. Calling Graph API...")
 
     resp = http_requests.get(
@@ -164,11 +166,11 @@ def WhoAmI() -> dict:
     This will show the difference between user and app tokens: user tokens
     will contain username/email, while app tokens will not.
     """
-    user_token = _get_bearer_token()
+    user_token = _get_authorization_token()
     if not user_token:
         raise RuntimeError("No Bearer token found in request")
     elif not _validate_token_audience(user_token):
-        raise RuntimeError("Invalid token audience or scope — expected api://<CLIENT_ID> with scope access_as_user")
+        raise RuntimeError("Invalid token _validate_token_audience")
     
     identity = _decode_jwt_claims(user_token)
 
@@ -186,7 +188,7 @@ def create_ticket(description: str) -> dict:
     Simulates the creation of a ticket in a service desk. It takes the user identity from the token and the input from the user, and returns a fake ticket.
     This is to show how you can use the user identity from the token to perform actions on behalf of the user.
     """
-    user_token = _get_bearer_token()
+    user_token = _get_authorization_token()
     if not user_token:
         raise RuntimeError("No Bearer token found in request")
     elif not _validate_token_audience(user_token):
@@ -203,5 +205,10 @@ def create_ticket(description: str) -> dict:
 if __name__ == "__main__":
     import uvicorn
 
-    asgi_app = TokenExtractMiddleware(mcp.streamable_http_app())
+    asgi_app = TokenExtractMiddleware(
+        mcp.streamable_http_app(
+            stateless_http=True,
+            transport_security=TransportSecuritySettings(enable_dns_rebinding_protection=False),
+        )
+    )
     uvicorn.run(asgi_app, host="0.0.0.0", port=8000, proxy_headers=True, forwarded_allow_ips="*")

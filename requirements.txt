@@ -1,9 +1,9 @@
-mcp
-uvicorn
-msal
-requests
-azure-identity
+mcp==2.1.1
+uvicorn==0.52.4
+msal==1.38.0
+requests==2.34.2
+azure-identity==1.26.0b2
 azure-core
-azure-monitor-opentelemetry
-python-dotenv
-debugpy
+azure-monitor-opentelemetry==1.8.9
+python-dotenv==1.2.3
+debugpy==1.8.21
