@@ -12,22 +12,7 @@ How it works:
 """
 
 import os
-from dotenv import load_dotenv
-load_dotenv()  # MUST be first: env vars must be set before any import reads them
-
-# --- Azure Monitor setup ---------------------------------------------------
-# We call configure_azure_monitor() OURSELVES first (with default INFO+ logging)
-# because agent_framework also calls it internally during import — but at WARNING level,
-# which would prevent our logger.info() traces from reaching App Insights.
-# The double call causes OTel to emit two harmless startup warnings:
-#   "Overriding of current LoggerProvider is not allowed"
-#   "Overriding of current TracerProvider is not allowed"
-# These are cosmetic only: they fire once at startup, do not affect runtime behaviour,
-# and are not worth working around with extra complexity.
-
-if os.environ.get("APPLICATIONINSIGHTS_CONNECTION_STRING"):
-    from azure.monitor.opentelemetry import configure_azure_monitor
-    configure_azure_monitor(logging_level=logging.INFO)  # capture INFO+ in App Insights (default is WARNING)
+from monitoring import logger
 
 import contextvars, json, logging
 import msal
@@ -37,18 +22,6 @@ from mcp.server.mcpserver import MCPServer
 from mcp.server.transport_security import TransportSecuritySettings
 from auth import _decode_jwt_claims
 
-# --------------------------------------------------------------------------
-# Configure logging - WARNING for everything else, while INFO for this module only
-logging.basicConfig(level=logging.WARNING) # this is the "father" logger, set to WARNING to avoid too much noise from other modules
-logger = logging.getLogger(__name__) # this is the "child" logger for our module (this module)
-logger.setLevel(logging.INFO) # we set the child logger to INFO to get more detailed logs from our module
-if not logger.handlers: # avoid adding multiple handlers if this code is reloaded multiple times (e.g. during development)
-    _handler = logging.StreamHandler()
-    _handler.setLevel(logging.INFO)
-    logger.addHandler(_handler)
-    logger.propagate = True # (default) so logs also reach the root logger
-
-# --------------------------------------------------------------------------
 
 MCP_CLIENT_ID = os.environ["MCP_CLIENT_ID"]
 MCP_CLIENT_SECRET = os.environ["MCP_CLIENT_SECRET"]
