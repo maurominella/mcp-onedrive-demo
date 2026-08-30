@@ -1,9 +1,9 @@
 import os
-import re
 from monitoring import logger
 from azure.identity import DefaultAzureCredential
 from azure.ai.projects import AIProjectClient
 from azure.ai.projects.models import MCPToolboxTool, ToolSearchToolboxTool, WebSearchToolboxTool
+import re
 import asyncio
 
 # Constants and Variables
@@ -18,21 +18,7 @@ MCP_TOOL_ENDPOINT = f"{os.environ.get('MCP_ACA_ENDPOINT')}/mcp"
 CREATE_TOOLBOX_EVEN_IF_EXISTS = False
 # The project connection created in Foundry or via CLI establishes how to authenticate to the MCP server.
 
-# The MCPToolboxTool definition establishes where and how the server appears in the toolbox:
-onedrive_mcp_tool = MCPToolboxTool(
-    server_label=MCP_TOOL_NAME,
-    server_url=MCP_TOOL_ENDPOINT,
-    require_approval="never",
-    project_connection_id=TOOL_CONNECTION_NAME,
-)
-
-# Create Foundry project client
-foundry_project_client = AIProjectClient(
-    endpoint=PROJECT_ENDPOINT,
-    credential=DefaultAzureCredential(),
-)
-
-def check_existing_toolbox(toolbox_name: str):
+def check_existing_toolbox(foundry_project_client, toolbox_name: str):
     if toolbox_name not in [t["name"] for t in foundry_project_client.toolboxes.list()]:
         print(f"No existing toolbox found with name: {toolbox_name}")
         return None
@@ -54,8 +40,13 @@ def check_existing_toolbox(toolbox_name: str):
         return latest_toolbox_version
 
 
-def create_or_retrieve_toolbox(toolbox_name: str, toolbox_description: str, create_anyway: bool = False):
-    toolbox_version = check_existing_toolbox(toolbox_name)
+def create_or_retrieve_toolbox(
+        foundry_project_client,
+        toolbox_name: str, 
+        toolbox_description: str, 
+        create_anyway: bool = False):
+    
+    toolbox_version = check_existing_toolbox(foundry_project_client, toolbox_name)
 
     if toolbox_version is not None and not create_anyway:
         print(f"Latest toolbox version is {toolbox_version.version}, so we do not create a new one as requested.")
@@ -145,8 +136,28 @@ async def list_toolbox_tools(toolbox_url: str, headers: dict):
         print(f"=====\n{consent_url}\n=====")
 
 
+# INSTRUCTIONS START HERE
+
+# The MCPToolboxTool definition establishes where and how the server appears in the toolbox:
+onedrive_mcp_tool = MCPToolboxTool(
+    server_label=MCP_TOOL_NAME,
+    server_url=MCP_TOOL_ENDPOINT,
+    require_approval="never",
+    project_connection_id=TOOL_CONNECTION_NAME,
+)
+
+# Create Foundry project client
+foundry_project_client = AIProjectClient(
+    endpoint=PROJECT_ENDPOINT,
+    credential=DefaultAzureCredential(),
+)
+
+foundry_chat_client = foundry_project_client.get_openai_client()
+
 toolbox, toolbox_developer_url, toolbox_consumer_url = create_or_retrieve_toolbox(
-    toolbox_name=TOOLBOX_NAME, toolbox_description=TOOLBOX_DESCRIPTION, create_anyway=CREATE_TOOLBOX_EVEN_IF_EXISTS)
+    foundry_project_client,
+    toolbox_name=TOOLBOX_NAME, 
+    toolbox_description=TOOLBOX_DESCRIPTION, create_anyway=CREATE_TOOLBOX_EVEN_IF_EXISTS)
 
 asyncio.run(list_toolbox_tools(
     toolbox_url=toolbox_developer_url, 
