@@ -7,13 +7,15 @@ from azure.ai.projects.models import MCPToolboxTool, ToolSearchToolboxTool, WebS
 import asyncio
 
 # Constants and Variables
-PROJECT_ENDPOINT = os.environ.get("TOOLBOX_PROJECT_ENDPOINT")
-TOOL_CONNECTION_NAME = "mcp-onedrive-demo01"
-PROJECT_CONNECTION_ID = f"{os.environ.get("TOOLBOX_PROJECT_RESOURCE_ID")}/connections/{TOOL_CONNECTION_NAME}"
+PROJECT_ENDPOINT = os.environ.get("TOOLBOX_PROJECT_ENDPOINT").rstrip("/")
 MCP_TOOL_NAME = os.environ.get("MCP_TOOL_NAME")
+TOOLBOX_NAME = os.environ.get("TOOLBOX_NAME")
+TOOLBOX_DESCRIPTION = os.environ.get("TOOLBOX_DESCRIPTION")
+TOOL_CONNECTION_NAME = os.environ.get("TOOL_CONNECTION_NAME")
+PROJECT_CONNECTION_ID = f"{os.environ.get("TOOLBOX_PROJECT_RESOURCE_ID")}/connections/{TOOL_CONNECTION_NAME}"
 MCP_TOOL_ENDPOINT = f"{os.environ.get('MCP_ACA_ENDPOINT')}/mcp"
-TOOLBOX_NAME = "mm_toolbox_for_onedrive"
-TOOLBOX_DESCRIPTION = "Toolbox with the OneDrive MCP tool"
+
+CREATE_TOOLBOX_EVEN_IF_EXISTS = False
 # The project connection created in Foundry or via CLI establishes how to authenticate to the MCP server.
 
 # The MCPToolboxTool definition establishes where and how the server appears in the toolbox:
@@ -25,31 +27,61 @@ onedrive_mcp_tool = MCPToolboxTool(
 )
 
 # Create Foundry project client
-project = AIProjectClient(
+foundry_project_client = AIProjectClient(
     endpoint=PROJECT_ENDPOINT,
     credential=DefaultAzureCredential(),
 )
 
+def retrieve_existing_toolbox(toolbox_name: str):
+    if toolbox_name not in [t["name"] for t in foundry_project_client.toolboxes.list()]:
+        print(f"No existing toolbox found with name: {toolbox_name}")
+        return None
+    else:
+        existing_toolbox = foundry_project_client.toolboxes.get(toolbox_name)
+        existing_toolbox_versions = list(foundry_project_client.toolboxes.list_versions(toolbox_name))
 
-# Create toolbox version with web search and MCP tools
-toolbox_version = project.toolboxes.create_version(
-    name=TOOLBOX_NAME,
-    description=TOOLBOX_DESCRIPTION,
-    tools=[
-        # WebSearchToolboxTool(),
-        onedrive_mcp_tool,
-        ToolSearchToolboxTool(),
-    ],
-)
-print(f"Created toolbox: {toolbox_version.name}, version: {toolbox_version.version}")
+        # use created_at to determine the latest version if needed
+        existing_toolbox_versions.sort(key=lambda v: v.created_at)
 
-project_endpoint = PROJECT_ENDPOINT.rstrip("/")
+        # retrieve the latest created version based on the sorted list and extract the date
+        latest_toolbox_version = existing_toolbox_versions[-1] if existing_toolbox_versions else None
+        print(
+            f"Found existing toolbox: {existing_toolbox.name}, "
+            f"default version: {existing_toolbox.default_version}, "
+            f"latest created version: {latest_toolbox_version.version if latest_toolbox_version else 'N/A'}, "
+            f"latest created at: {latest_toolbox_version.created_at if latest_toolbox_version else 'N/A'}"
+            )
+        return latest_toolbox_version
+
+
+toolbox_version = retrieve_existing_toolbox(TOOLBOX_NAME)
+
+if toolbox_version is not None and not CREATE_TOOLBOX_EVEN_IF_EXISTS:
+    print(f"Latest toolbox version is {toolbox_version.version}, so we do not create a new one as requested.")
+else:
+    if toolbox_version is not None and CREATE_TOOLBOX_EVEN_IF_EXISTS:
+        print(f"Latest toolbox version is {toolbox_version.version}, but we create a new one as requested.")
+    else:  
+        print("No existing toolbox found, so we create a new one as requested.")
+
+    # Create toolbox version with web search and MCP tools
+    toolbox_version = foundry_project_client.toolboxes.create_version(
+        name=TOOLBOX_NAME,
+        description=TOOLBOX_DESCRIPTION,
+        tools=[
+            # WebSearchToolboxTool(),
+            onedrive_mcp_tool,
+            ToolSearchToolboxTool(),
+        ],
+    )
+    print(f"Created toolbox: {toolbox_version.name}, version: {toolbox_version.version}")
+
 toolbox_developer_url = (
-    f"{project_endpoint}/toolboxes/{toolbox_version.name}"
+    f"{PROJECT_ENDPOINT}/toolboxes/{toolbox_version.name}"
     f"/versions/{toolbox_version.version}/mcp?api-version=v1"
 )
 toolbox_consumer_url = (
-    f"{project_endpoint}/toolboxes/{toolbox_version.name}/mcp?api-version=v1"
+    f"{PROJECT_ENDPOINT}/toolboxes/{toolbox_version.name}/mcp?api-version=v1"
 )
 
 print(f"Toolbox developer URL: {toolbox_developer_url}")
@@ -80,22 +112,24 @@ def find_consent_url(error: BaseException) -> str | None:
 
 # Connect to the toolbox and list tools
 async def verify_toolbox(toolbox_url: str, headers: dict):
+    import httpx2
     from mcp import ClientSession
-    from mcp.client.streamable_http import streamablehttp_client
+    from mcp.client.streamable_http import streamable_http_client
 
     try:
-        async with streamablehttp_client(
-            toolbox_url,
-            headers=headers,
-        ) as (read, write, _):
-            async with ClientSession(read, write) as session:
-                await session.initialize()
+        async with httpx2.AsyncClient(headers=headers) as http_client:
+            async with streamable_http_client(
+                toolbox_url,
+                http_client=http_client,
+            ) as (read, write):
+                async with ClientSession(read, write) as session:
+                    await session.initialize()
 
-                # List available tools
-                tools_result = await session.list_tools()
-                print(f"Tools found: {len(tools_result.tools)}")
-                for tool in tools_result.tools:
-                    print(f"  - {tool.name}: {(tool.description or '')[:80]}")
+                    # List available tools
+                    tools_result = await session.list_tools()
+                    print(f"Tools found: {len(tools_result.tools)}")
+                    for tool in tools_result.tools:
+                        print(f"  - {tool.name}: {(tool.description or '')}")
     except Exception as error:
         consent_url = find_consent_url(error)
         if not consent_url:
@@ -107,27 +141,6 @@ async def verify_toolbox(toolbox_url: str, headers: dict):
 asyncio.run(verify_toolbox(
     toolbox_url=toolbox_developer_url, 
     headers=authorization_headers()))
-
-# Run a local Agent Framework agent through the Foundry Toolbox.
-async def run_agent_with_toolbox(toolbox_url: str, chat_client, prompt: str):
-    from agent_framework import Agent, MCPStreamableHTTPTool
-
-    toolbox_tool = MCPStreamableHTTPTool(
-        name=TOOLBOX_NAME,
-        url=toolbox_url,
-        description=TOOLBOX_DESCRIPTION,
-        load_prompts=False,
-        header_provider=lambda _: authorization_headers(),
-    )
-
-    async with toolbox_tool:
-        agent = Agent(
-            client=chat_client,
-            name="onedrive-toolbox-agent",
-            instructions="Use the Foundry Toolbox tools when relevant.",
-            tools=[toolbox_tool],
-        )
-        return await agent.run(prompt)
 
 
 print ("Program ends here.")
