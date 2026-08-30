@@ -32,7 +32,7 @@ foundry_project_client = AIProjectClient(
     credential=DefaultAzureCredential(),
 )
 
-def retrieve_existing_toolbox(toolbox_name: str):
+def check_existing_toolbox(toolbox_name: str):
     if toolbox_name not in [t["name"] for t in foundry_project_client.toolboxes.list()]:
         print(f"No existing toolbox found with name: {toolbox_name}")
         return None
@@ -54,38 +54,41 @@ def retrieve_existing_toolbox(toolbox_name: str):
         return latest_toolbox_version
 
 
-toolbox_version = retrieve_existing_toolbox(TOOLBOX_NAME)
+def create_or_retrieve_toolbox(toolbox_name: str, toolbox_description: str, create_anyway: bool = False):
+    toolbox_version = check_existing_toolbox(toolbox_name)
 
-if toolbox_version is not None and not CREATE_TOOLBOX_EVEN_IF_EXISTS:
-    print(f"Latest toolbox version is {toolbox_version.version}, so we do not create a new one as requested.")
-else:
-    if toolbox_version is not None and CREATE_TOOLBOX_EVEN_IF_EXISTS:
-        print(f"Latest toolbox version is {toolbox_version.version}, but we create a new one as requested.")
-    else:  
-        print("No existing toolbox found, so we create a new one as requested.")
+    if toolbox_version is not None and not create_anyway:
+        print(f"Latest toolbox version is {toolbox_version.version}, so we do not create a new one as requested.")
+    else:
+        if toolbox_version is not None and create_anyway:
+            print(f"Latest toolbox version is {toolbox_version.version}, but we create a new one as requested.")
+        else:  
+            print("No existing toolbox found, so we create a new one as requested.")
 
-    # Create toolbox version with web search and MCP tools
-    toolbox_version = foundry_project_client.toolboxes.create_version(
-        name=TOOLBOX_NAME,
-        description=TOOLBOX_DESCRIPTION,
-        tools=[
-            # WebSearchToolboxTool(),
-            onedrive_mcp_tool,
-            ToolSearchToolboxTool(),
-        ],
+        # Create toolbox version with web search and MCP tools
+        toolbox_version = foundry_project_client.toolboxes.create_version(
+            name=toolbox_name,
+            description=toolbox_description,
+            tools=[
+                # WebSearchToolboxTool(),
+                onedrive_mcp_tool,
+                ToolSearchToolboxTool(),
+            ],
+        )
+        print(f"Created toolbox: {toolbox_version.name}, version: {toolbox_version.version}")
+
+    toolbox_developer_url = (
+        f"{PROJECT_ENDPOINT}/toolboxes/{toolbox_version.name}"
+        f"/versions/{toolbox_version.version}/mcp?api-version=v1"
     )
-    print(f"Created toolbox: {toolbox_version.name}, version: {toolbox_version.version}")
+    toolbox_consumer_url = (
+        f"{PROJECT_ENDPOINT}/toolboxes/{toolbox_version.name}/mcp?api-version=v1"
+    )
 
-toolbox_developer_url = (
-    f"{PROJECT_ENDPOINT}/toolboxes/{toolbox_version.name}"
-    f"/versions/{toolbox_version.version}/mcp?api-version=v1"
-)
-toolbox_consumer_url = (
-    f"{PROJECT_ENDPOINT}/toolboxes/{toolbox_version.name}/mcp?api-version=v1"
-)
+    print(f"Toolbox developer URL: {toolbox_developer_url}")
+    print(f"Toolbox consumer URL: {toolbox_consumer_url}")
 
-print(f"Toolbox developer URL: {toolbox_developer_url}")
-print(f"Toolbox consumer URL: {toolbox_consumer_url}")
+    return toolbox_version, toolbox_developer_url, toolbox_consumer_url
 
 
 def authorization_headers() -> dict:
@@ -138,9 +141,12 @@ async def verify_toolbox(toolbox_url: str, headers: dict):
         print("OAuth consent is required. Open this URL, authorize access, then run again:")
         print(consent_url)
 
+
+toolbox, toolbox_developer_url, toolbox_consumer_url = create_or_retrieve_toolbox(
+    toolbox_name=TOOLBOX_NAME, toolbox_description=TOOLBOX_DESCRIPTION, create_anyway=CREATE_TOOLBOX_EVEN_IF_EXISTS)
+
 asyncio.run(verify_toolbox(
     toolbox_url=toolbox_developer_url, 
     headers=authorization_headers()))
-
 
 print ("Program ends here.")
