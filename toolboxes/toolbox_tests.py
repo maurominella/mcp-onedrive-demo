@@ -113,8 +113,8 @@ def find_consent_url(error: BaseException) -> str | None:
     return None
 
 
-# Connect to the toolbox and list tools
 async def verify_toolbox(toolbox_url: str, headers: dict):
+    # Connect to the toolbox and list tools
     import httpx2
     from mcp import ClientSession
     from mcp.client.streamable_http import streamable_http_client
@@ -130,16 +130,19 @@ async def verify_toolbox(toolbox_url: str, headers: dict):
 
                     # List available tools
                     tools_result = await session.list_tools()
-                    print(f"Tools found: {len(tools_result.tools)}")
+                    print(f"\nTools found: {len(tools_result.tools)}")
+                    i = 1
                     for tool in tools_result.tools:
-                        print(f"  - {tool.name}: {(tool.description or '')}")
+                        print(f"{i}. {tool.name}: {(tool.description or '')}")
+                        i += 1
+
     except Exception as error:
         consent_url = find_consent_url(error)
         if not consent_url:
             raise
 
-        print("OAuth consent is required. Open this URL, authorize access, then run again:")
-        print(consent_url)
+        print("\nOAuth consent is required. Open this URL, authorize access, then run again:")
+        print(f"=====\n{consent_url}\n=====")
 
 
 toolbox, toolbox_developer_url, toolbox_consumer_url = create_or_retrieve_toolbox(
