@@ -113,7 +113,7 @@ def find_consent_url(error: BaseException) -> str | None:
     return None
 
 
-async def verify_toolbox(toolbox_url: str, headers: dict):
+async def list_toolbox_tools(toolbox_url: str, headers: dict):
     # Connect to the toolbox and list tools
     import httpx2
     from mcp import ClientSession
@@ -148,8 +148,8 @@ async def verify_toolbox(toolbox_url: str, headers: dict):
 toolbox, toolbox_developer_url, toolbox_consumer_url = create_or_retrieve_toolbox(
     toolbox_name=TOOLBOX_NAME, toolbox_description=TOOLBOX_DESCRIPTION, create_anyway=CREATE_TOOLBOX_EVEN_IF_EXISTS)
 
-asyncio.run(verify_toolbox(
+asyncio.run(list_toolbox_tools(
     toolbox_url=toolbox_developer_url, 
     headers=authorization_headers()))
 
-print ("Program ends here.")
+print ("\nProgram ends here.")
