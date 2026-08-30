@@ -1,22 +1,15 @@
 [project]
-name = "mcp-onedrive-demo"
+name = "toolboxes"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
-    "azure-core>=1.41.0",
+    "agent-framework-core>=1.16.0",
+    "azure-ai-projects>=2.5.0",
     "azure-identity>=1.26.0b2",
     "azure-monitor-opentelemetry>=1.8.9",
     "debugpy>=1.8.21",
-    "mcp>=2.1.1",
-    "msal>=1.38.0",
+    "mcp>=1.24.0,<2",
     "python-dotenv>=1.2.3",
-    "requests>=2.34.2",
-    "uvicorn>=0.52.4",
-]
-
-[tool.uv.workspace]
-exclude = [
-    "toolboxes",
 ]

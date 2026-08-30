@@ -24,7 +24,7 @@ RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r requirements.txt
 
 # Copy source code after dependencies — changes here only invalidate this layer.
-COPY mcp_server.py auth.py ./
+COPY mcp_server.py auth.py monitoring.py ./
 
 # EXPOSE is metadata only — it does not open or map any port.
 # The actual host-to-container mapping is specified at runtime (e.g. -p 8010:8000).
