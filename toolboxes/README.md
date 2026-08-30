@@ -37,6 +37,9 @@ Auth_Type: OAuth2
 Target:    https://mcp-onedrive-demo01.niceflower-8b4a0311.swedencentral.azurecontainerapps.io/mcp
 ```
 
+This tool is visible in Microsoft Foundry and is already connected to a prompt agent:
+![alt text](./_IMAGES/tool_connection.png)
+
 ## Setup Steps
 ```bash
 # 1. **MKDIR** the new folder and and **CD** into it
