@@ -1,8 +1,41 @@
-# Toolboxese in Microsoft Foundry
+# Toolboxes' in Microsoft Foundry
 
 ## Documentation
 - Announcement: https://devblogs.microsoft.com/foundry/building-agents-that-act-on-your-behalf-with-toolboxes-in-foundry/
-- Documentation: https://learn.microsoft.com/en-us/azure/foundry/agents/how-to/tools/toolbox?pivots=python
+- How they work: https://learn.microsoft.com/en-us/azure/foundry/agents/how-to/tools/toolbox?pivots=python
+
+## Starting point
+In my Foundry project I already created the connection to my existing MCP tool, setting the authentication as `OAuth Identity Passthrough`:
+```bash
+azd extension update --all
+
+azd auth login
+
+connection_name=mcp-onedrive-tool01
+project_endpoint=https://fo***59.services.ai.azure.com/api/projects/aif7159-standard-agent-project
+
+azd ai connection create $connection_name \
+  -p $project_endpoint \
+  --kind remote-tool \
+  --target https://mcp-onedrive-demo01.niceflower-8b4a0311.swedencentral.azurecontainerapps.io/mcp \
+  --auth-type oauth2 \
+  --authorization-url https://login.microsoftonline.com/3ad0b905-34ab-4116-93d9-c1dcc2d35af6/oauth2/v2.0/authorize \
+  --token-url https://login.microsoftonline.com/3ad0b905-34ab-4116-93d9-c1dcc2d35af6/oauth2/v2.0/token \
+  --refresh-url https://login.microsoftonline.com/3ad0b905-34ab-4116-93d9-c1dcc2d35af6/oauth2/v2.0/token \
+  --client-id 15***5c \
+  --client-secret UGk***JV \
+  --scopes "api://mcp/15***5c/access_as_user offline_access"
+
+azd ai connection show $connection_name \
+  -p $project_endpoint
+
+>>> OUTPUT
+Connection "mcp-onedrive-tool01" created in project "aif7159-standard-agent-project".
+Name:      mcp-onedrive-tool01
+Kind:      RemoteTool
+Auth_Type: OAuth2
+Target:    https://mcp-onedrive-demo01.niceflower-8b4a0311.swedencentral.azurecontainerapps.io/mcp
+```
 
 ## Setup Steps
 ```bash
