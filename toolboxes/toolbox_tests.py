@@ -2,18 +2,19 @@ import os
 from monitoring import logger
 from azure.identity import DefaultAzureCredential
 from azure.ai.projects import AIProjectClient
-from azure.ai.projects.models import MCPToolboxTool, ToolSearchToolboxTool, WebSearchToolboxTool
+from azure.ai.projects.models import MCPTool, MCPToolboxTool, PromptAgentDefinition, ToolSearchToolboxTool
 import re
 import asyncio
 
 # Constants and Variables
-PROJECT_ENDPOINT = os.environ.get("TOOLBOX_PROJECT_ENDPOINT").rstrip("/")
-MCP_TOOL_NAME = os.environ.get("MCP_TOOL_NAME")
-TOOLBOX_NAME = os.environ.get("TOOLBOX_NAME")
-TOOLBOX_DESCRIPTION = os.environ.get("TOOLBOX_DESCRIPTION")
-TOOL_CONNECTION_NAME = os.environ.get("TOOL_CONNECTION_NAME")
-PROJECT_CONNECTION_ID = f"{os.environ.get("TOOLBOX_PROJECT_RESOURCE_ID")}/connections/{TOOL_CONNECTION_NAME}"
-MCP_TOOL_ENDPOINT = f"{os.environ.get('MCP_ACA_ENDPOINT')}/mcp"
+PROJECT_ENDPOINT = os.environ.get("PROJECT_ENDPOINT").rstrip("/")
+TOOL01_NAME = os.environ.get("TOOL01_NAME")
+TOOL01_CONNECTION_NAME = os.environ.get("TOOL01_CONNECTION_NAME")
+TOOL01_ENDPOINT = os.environ.get('TOOL01_ENDPOINT')
+TOOLBOX01_NAME = os.environ.get("TOOLBOX01_NAME")
+TOOLBOX01_CONNECTION_NAME = os.environ.get("TOOLBOX01_CONNECTION_NAME")
+TOOLBOX01_DESCRIPTION = os.environ.get("TOOLBOX01_DESCRIPTION")
+TOOLBOX01_CONNECTION_ID = f"{os.environ.get("PROJECT_RESOURCE_ID")}/connections/{TOOLBOX01_CONNECTION_NAME}"
 
 CREATE_TOOLBOX_EVEN_IF_EXISTS = False
 # The project connection created in Foundry or via CLI establishes how to authenticate to the MCP server.
@@ -43,7 +44,8 @@ def check_existing_toolbox(foundry_project_client, toolbox_name: str):
 def create_or_retrieve_toolbox(
         foundry_project_client,
         toolbox_name: str, 
-        toolbox_description: str, 
+        toolbox_description: str,
+        tool,
         create_anyway: bool = False):
     
     toolbox_version = check_existing_toolbox(foundry_project_client, toolbox_name)
@@ -62,7 +64,7 @@ def create_or_retrieve_toolbox(
             description=toolbox_description,
             tools=[
                 # WebSearchToolboxTool(),
-                onedrive_mcp_tool,
+                tool,
                 ToolSearchToolboxTool(),
             ],
         )
@@ -104,11 +106,13 @@ def find_consent_url(error: BaseException) -> str | None:
     return None
 
 
-async def list_toolbox_tools(toolbox_url: str, headers: dict):
+async def list_toolbox_tools(toolbox_url: str, headers: dict) -> bool:
     # Connect to the toolbox and list tools
     import httpx2
     from mcp import ClientSession
     from mcp.client.streamable_http import streamable_http_client
+
+    success = True
 
     try:
         async with httpx2.AsyncClient(headers=headers) as http_client:
@@ -134,17 +138,14 @@ async def list_toolbox_tools(toolbox_url: str, headers: dict):
 
         print("\nOAuth consent is required. Open this URL, authorize access, then run again:")
         print(f"=====\n{consent_url}\n=====")
+        success = False
+
+    return success
+
+    
 
 
 # INSTRUCTIONS START HERE
-
-# The MCPToolboxTool definition establishes where and how the server appears in the toolbox:
-onedrive_mcp_tool = MCPToolboxTool(
-    server_label=MCP_TOOL_NAME,
-    server_url=MCP_TOOL_ENDPOINT,
-    require_approval="never",
-    project_connection_id=TOOL_CONNECTION_NAME,
-)
 
 # Create Foundry project client
 foundry_project_client = AIProjectClient(
@@ -152,15 +153,77 @@ foundry_project_client = AIProjectClient(
     credential=DefaultAzureCredential(),
 )
 
-foundry_chat_client = foundry_project_client.get_openai_client()
+# MCPTool is used by a prompt agent to call the OneDrive MCP server directly.
+agent_tool01 = MCPTool(
+    server_label=TOOL01_NAME,
+    server_url=TOOL01_ENDPOINT,
+    require_approval="never",
+    project_connection_id=TOOL01_CONNECTION_NAME,
+)
 
+agent = foundry_project_client.agents.create_version(
+    agent_name=os.environ["AGENT_WITH_TOOL_NAME"],
+    definition=PromptAgentDefinition(
+        model="gpt-5.4-mini",#os.environ["AZURE_AI_MODEL_DEPLOYMENT_NAME"],
+        instructions=(
+            "You are a helpful assistant. "
+            "Use the OneDrive toolbox whenever the request requires OneDrive data."
+        ),
+        tools=[agent_tool01],
+    ),
+)
+
+# MCPToolboxTool is used only inside a toolbox definition.
+# So this tool is only used within the toolbox and not directly by the prompt agent.
+# In other words, I can't use the "normal" agent_tool01 as a tool inside the toolbox:
+# I need a separate MCPToolboxTool instance, mapped specifically for the toolbox.
+toolbox_tool01 = MCPToolboxTool(
+    server_label=TOOL01_NAME,
+    server_url=TOOL01_ENDPOINT,
+    require_approval="never",
+    project_connection_id=TOOL01_CONNECTION_NAME,
+)
+
+
+# toolbox is a ToolboxVersionObject Azure AI Projects SDK
 toolbox, toolbox_developer_url, toolbox_consumer_url = create_or_retrieve_toolbox(
-    foundry_project_client,
-    toolbox_name=TOOLBOX_NAME, 
-    toolbox_description=TOOLBOX_DESCRIPTION, create_anyway=CREATE_TOOLBOX_EVEN_IF_EXISTS)
+    foundry_project_client=foundry_project_client,
+    toolbox_name=TOOLBOX01_NAME, 
+    toolbox_description=TOOLBOX01_DESCRIPTION, 
+    tool=toolbox_tool01,
+    create_anyway=CREATE_TOOLBOX_EVEN_IF_EXISTS
+    )
 
-asyncio.run(list_toolbox_tools(
+success = asyncio.run(list_toolbox_tools(
     toolbox_url=toolbox_developer_url, 
     headers=authorization_headers()))
+
+if not success:
+    print("Failed to list toolbox tools. Exiting.")
+    exit(1)
+
+
+
+
+# A prompt agent sees a toolbox through its MCP consumer endpoint, so this is an MCPTool.
+agent_toolbox01 = MCPTool(
+    server_label=toolbox.name,
+    server_url=toolbox_consumer_url,
+    require_approval="never",
+    project_connection_id=TOOLBOX01_CONNECTION_NAME,
+)
+
+agent = foundry_project_client.agents.create_version(
+    agent_name=os.environ["AGENT_WITH_TOOLBOX_NAME"],
+    definition=PromptAgentDefinition(
+        model="gpt-5.4-mini",#os.environ["AZURE_AI_MODEL_DEPLOYMENT_NAME"],
+        instructions=(
+            "You are a helpful assistant. "
+            "Use the OneDrive toolbox whenever the request requires OneDrive data."
+        ),
+        tools=[agent_toolbox01],
+    ),
+)
+
 
 print ("\nProgram ends here.")
